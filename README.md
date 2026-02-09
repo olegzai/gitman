@@ -2,6 +2,26 @@
 
 **GITMAN** is a specialized GitHub repository management tool designed specifically for handling documentation files in Markdown format. The project aims to provide a streamlined workflow for managing documentation across multiple GitHub repositories while maintaining strict limitations to prevent any code modifications.
 
+## Table of Contents
+- [Purpose](#purpose)
+- [Features](#features)
+- [Limitations](#limitations)
+- [Use Cases](#use-cases)
+- [Target Audience Insights](#target-audience-insights)
+- [Development Approach](#development-approach)
+- [Installation](#installation)
+- [Getting Started](#getting-started)
+- [Configuration](#configuration)
+- [Commands](#commands)
+- [Security](#security)
+- [Architecture](#architecture)
+- [Testing](#testing)
+- [Versioning](#versioning)
+- [Support](#support)
+- [Contributing](#contributing)
+- [License](#license)
+- [Roadmap](#roadmap)
+
 ## Purpose
 
 GITMAN serves as a documentation-focused repository manager that allows users to efficiently handle Markdown files across multiple GitHub repositories. The tool is intentionally limited to documentation management to ensure safe and focused operations without the risk of unintended code changes.
