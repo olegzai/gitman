@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GITMAN - GitHub Documentation Manager</title>
+</head>
+<body>
+    <div style="font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px;">
+        <header style="background-color: #24292e; color: white; padding: 20px; text-align: center; border-radius: 8px; margin-bottom: 20px;">
+            <h1>GITMAN</h1>
+            <p>GitHub Repository Documentation Manager</p>
+        </header>
+
+        <details open>
+            <summary style="padding: 12px; background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
+                <span>Configuration</span>
+            </summary>
+            <div style="padding: 15px; border: 1px solid #ccc; border-top: none; background-color: white;">
+                <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
+                    <div>
+                        <label for="githubToken">GitHub Token:</label>
+                        <input type="password" id="githubToken" placeholder="Enter your GitHub token" style="padding: 8px; margin-left: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <button onclick="loadTokenFromFile()" style="padding: 8px 15px; background-color: #586069; color: white; border: none; border-radius: 4px; cursor: pointer;">Load Token from File</button>
+                    </div>
+                    <div>
+                        <label for="githubUsername">GitHub Username:</label>
+                        <input type="text" id="githubUsername" placeholder="Enter your GitHub username" style="padding: 8px; margin-left: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                    <button onclick="loadRepositories()" style="padding: 8px 15px; background-color: #2ea44f; color: white; border: none; border-radius: 4px; cursor: pointer;">Load Repositories</button>
+                    <button onclick="syncAllDocs()" style="padding: 8px 15px; background-color: #0366d6; color: white; border: none; border-radius: 4px; cursor: pointer;">Sync All Docs</button>
+                    <button onclick="checkSyncStatus()" style="padding: 8px 15px; background-color: #6f42c1; color: white; border: none; border-radius: 4px; cursor: pointer;">Check Sync Status</button>
+                    <button onclick="syncRepos()" style="padding: 8px 15px; background-color: #d73a49; color: white; border: none; border-radius: 4px; cursor: pointer;">Sync Repos</button>
+                </div>
+                <div style="margin-top: 15px;">
+                    <label for="sortOrder">Sort by:</label>
+                    <select id="sortOrder" onchange="sortRepositories()" style="padding: 5px; margin-right: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                        <option value="name-asc">Name (A-Z)</option>
+                        <option value="name-desc">Name (Z-A)</option>
+                        <option value="updated-asc">Last Updated (Oldest)</option>
+                        <option value="updated-desc" selected>Last Updated (Newest)</option>
+                    </select>
+                </div>
+            </div>
+        </details>
+
+        <details id="syncStatusSection" style="margin-top: 20px; display: none;">
+            <summary style="padding: 12px; background-color: #fff3cd; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
+                <span>Sync Status Report</span>
+            </summary>
+            <div style="padding: 15px; border: 1px solid #ccc; border-top: none; background-color: white;">
+                <div id="syncReport"></div>
+            </div>
+        </details>
+
+        <details id="repoListAccordion" style="margin-top: 20px;">
+            <summary style="padding: 12px; background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
+                <span>Repositories</span>
+            </summary>
+            <div style="padding: 15px; border: 1px solid #ccc; border-top: none; background-color: white;" id="repoList">
+                <!-- Repositories will be loaded here -->
+            </div>
+        </details>
+
+        <details id="statusPanel" style="margin-top: 20px; display: none;">
+            <summary style="padding: 12px; background-color: #f0f8ff; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; justify-content: space-between; align-items: center;">
+                <span>Status</span>
+            </summary>
+            <div style="padding: 15px; border: 1px solid #ccc; border-top: none; background-color: white;">
+                <div id="statusMessages"></div>
+            </div>
+        </details>
+    </div>
+
+    <script>
+        // Global variables
+        let repos = [];
+        let githubToken = '';
+        let githubUsername = '';
+        let localRepos = [];
+
+        // DOM elements
+        const repoListEl = document.getElementById('repoList');
+        const statusPanelEl = document.getElementById('statusPanel');
+        const statusMessagesEl = document.getElementById('statusMessages');
+        const syncStatusSectionEl = document.getElementById('syncStatusSection');
+        const syncReportEl = document.getElementById('syncReport');
+
+        // Utility functions
+        function logStatus(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const statusMessage = `<p>[${timestamp}] ${message}</p>`;
+            
+            // Insert new message at the beginning to show newest at the top
+            statusMessagesEl.insertAdjacentHTML('afterbegin', statusMessage);
+            
+            // Show the status panel
+            statusPanelEl.style.display = 'block';
+            
+            // Auto-open the status accordion when a new message appears
+            statusPanelEl.open = true;
+        }
+
+        function sanitizeHTML(str) {
+            const temp = document.createElement('div');
+            temp.textContent = str;
+            return temp.innerHTML;
+        }
+
+        // GitHub API functions
+        async function apiCall(url, options = {}) {
+            const headers = {
+                'Authorization': `Bearer ${githubToken}`,
+                'Accept': 'application/vnd.github.v3+json',
+                ...options.headers
+            };
+
+            const response = await fetch(url, { ...options, headers });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`GitHub API error: ${response.status} - ${errorData.message || 'Unknown error'}`);
+            }
+            
+            return response.json();
+        }
+
+        async function getUserRepos(username) {
+            logStatus(`Fetching all repositories for user: ${username}`);
+            
+            // Use the /user/repos endpoint which includes all repos the user has access to
+            // This includes public, private, owned, and member repositories
+            let allRepos = [];
+            let page = 1;
+            const perPage = 100; // Maximum allowed per page
+            
+            try {
+                while (true) {
+                    const url = `https://api.github.com/user/repos?page=${page}&per_page=${perPage}&type=all`;
+                    const repos = await apiCall(url);
+                    
+                    if (repos.length === 0) {
+                        break; // No more repositories
+                    }
+                    
+                    allRepos = allRepos.concat(repos);
+                    page++;
+                    
+                    // Small delay to avoid hitting rate limits
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
+                logStatus(`Found ${allRepos.length} repositories from GitHub account ${username}`);
+                return allRepos;
+            } catch (error) {
+                logStatus(`Error fetching repositories: ${error.message}`);
+                
+                // Fallback: try the /users/{username}/repos endpoint
+                try {
+                    logStatus(`Trying fallback method to fetch repositories for ${username}...`);
+                    let fallbackRepos = [];
+                    page = 1;
+                    
+                    while (true) {
+                        const url = `https://api.github.com/users/${username}/repos?page=${page}&per_page=${perPage}`;
+                        const repos = await apiCall(url);
+                        
+                        if (repos.length === 0) {
+                            break;
+                        }
+                        
+                        fallbackRepos = fallbackRepos.concat(repos);
+                        page++;
+                        
+                        // Small delay to avoid hitting rate limits
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                    
+                    logStatus(`Found ${fallbackRepos.length} repositories using fallback method`);
+                    return fallbackRepos;
+                } catch (fallbackError) {
+                    logStatus(`Fallback method also failed: ${fallbackError.message}`);
+                    return [];
+                }
+            }
+        }
+
+        async function getRepoContents(owner, repo, path = '') {
+            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+            return await apiCall(url);
+        }
+
+        async function getFileContent(owner, repo, path) {
+            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+            const response = await apiCall(url);
+            // Decode base64 content
+            const content = atob(response.content.replace(/\n/g, ''));
+            return content;
+        }
+
+        async function updateFile(owner, repo, path, content, message) {
+            const fileName = path.split('/').pop();
+            
+            // Check if this is a documentation file before uploading
+            if (!isDocumentationFile(fileName)) {
+                logStatus(`Cannot upload non-documentation file: ${path}`);
+                throw new Error(`Cannot upload non-documentation file: ${path}`);
+            }
+            
+            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+            
+            // Get current file info to include sha in the update
+            const fileInfo = await apiCall(`${url}`);
+            
+            const data = {
+                message: message,
+                content: btoa(unescape(encodeURIComponent(content))),
+                sha: fileInfo.sha
+            };
+            
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${githubToken}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Failed to update file: ${response.status} - ${errorData.message}`);
+            }
+            
+            return await response.json();
+        }
+
+        // Local file operations (using File System Access API when available)
+        async function loadLocalRepo(repoName) {
+            try {
+                // Check if File System Access API is available
+                if ('showDirectoryPicker' in window) {
+                    const dirHandle = await window.showDirectoryPicker({
+                        mode: 'readwrite',
+                        startIn: 'documents'
+                    });
+                    
+                    // Try to find the specific repo directory
+                    for await (const entry of dirHandle.values()) {
+                        if (entry.kind === 'directory' && entry.name === repoName) {
+                            return await readDirRecursive(entry);
+                        }
+                    }
+                } else {
+                    logStatus('File System Access API not available. Using simulated local storage.');
+                    // Fallback to localStorage for demo purposes
+                    const localData = localStorage.getItem(`repo_${repoName}`);
+                    return localData ? JSON.parse(localData) : null;
+                }
+            } catch (error) {
+                logStatus(`Could not access local directory for ${repoName}: ${error.message}`);
+                return null;
+            }
+        }
+
+        async function readDirRecursive(dirHandle, path = '') {
+            const contents = {};
+            
+            for await (const entry of dirHandle.values()) {
+                const entryPath = path ? `${path}/${entry.name}` : entry.name;
+                
+                if (entry.kind === 'file') {
+                    const file = await entry.getFile();
+                    const content = await file.text();
+                    contents[entryPath] = content;
+                } else if (entry.kind === 'directory') {
+                    contents[entryPath] = await readDirRecursive(entry, entryPath);
+                }
+            }
+            
+            return contents;
+        }
+
+        async function saveLocalRepo(repoName, contents) {
+            try {
+                if ('showDirectoryPicker' in window) {
+                    const dirHandle = await window.showDirectoryPicker({
+                        mode: 'readwrite',
+                        startIn: 'documents'
+                    });
+                    
+                    // Find or create the repo directory
+                    let repoDirHandle = null;
+                    for await (const entry of dirHandle.values()) {
+                        if (entry.kind === 'directory' && entry.name === repoName) {
+                            repoDirHandle = entry;
+                            break;
+                        }
+                    }
+                    
+                    if (!repoDirHandle) {
+                        repoDirHandle = await dirHandle.getDirectoryHandle(repoName, { create: true });
+                    }
+                    
+                    // Save files recursively
+                    await saveContentsToDir(contents, repoDirHandle);
+                } else {
+                    // Fallback to localStorage
+                    localStorage.setItem(`repo_${repoName}`, JSON.stringify(contents));
+                    logStatus(`Saved ${repoName} to local storage`);
+                }
+            } catch (error) {
+                logStatus(`Could not save local directory for ${repoName}: ${error.message}`);
+            }
+        }
+
+        async function saveContentsToDir(contents, dirHandle) {
+            for (const [name, content] of Object.entries(contents)) {
+                if (typeof content === 'string') {
+                    // It's a file
+                    const fileHandle = await dirHandle.getFileHandle(name, { create: true });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(content);
+                    await writable.close();
+                } else {
+                    // It's a subdirectory
+                    const subDirHandle = await dirHandle.getDirectoryHandle(name, { create: true });
+                    await saveContentsToDir(content, subDirHandle);
+                }
+            }
+        }
+
+        // Documentation operations
+        async function getRepoDocs(owner, repo) {
+            try {
+                logStatus(`Fetching documentation for ${repo}...`);
+                const contents = await getRepoContents(owner, repo);
+                const docs = [];
+                
+                // Look for markdown files in the repository
+                for (const item of contents) {
+                    if (item.type === 'file' && isDocumentationFile(item.name)) {
+                        docs.push(item);
+                    } else if (item.type === 'dir') {
+                        // Recursively look in subdirectories for documentation files
+                        const subDocs = await getRepoDocsRecursive(owner, repo, item.path);
+                        docs.push(...subDocs);
+                    }
+                }
+                
+                logStatus(`Found ${docs.length} documentation files in ${repo}`);
+                return docs;
+            } catch (error) {
+                logStatus(`Error fetching docs for ${repo}: ${error.message}`);
+                return [];
+            }
+        }
+
+        // Recursive helper function to find documentation files in subdirectories
+        async function getRepoDocsRecursive(owner, repo, path) {
+            try {
+                const contents = await getRepoContents(owner, repo, path);
+                const docs = [];
+                
+                for (const item of contents) {
+                    if (item.type === 'file' && isDocumentationFile(item.name)) {
+                        docs.push(item);
+                    } else if (item.type === 'dir') {
+                        const subDocs = await getRepoDocsRecursive(owner, repo, item.path);
+                        docs.push(...subDocs);
+                    }
+                }
+                
+                return docs;
+            } catch (error) {
+                logStatus(`Error fetching docs from ${path} in ${repo}: ${error.message}`);
+                return [];
+            }
+        }
+
+        // Function to determine if a file is a documentation file
+        function isDocumentationFile(filename) {
+            const lowerName = filename.toLowerCase();
+            
+            // Check if it's a markdown file
+            if (lowerName.endsWith('.md') || lowerName.endsWith('.markdown')) {
+                return true;
+            }
+            
+            // Check for common documentation filenames (regardless of extension)
+            const docPatterns = [
+                'readme', 'changelog', 'contributing', 'license', 'notice',
+                'documentation', 'docs', 'tutorial', 'guide', 'manual', 'faq',
+                'help', 'about', 'info', 'terms', 'privacy', 'security'
+            ];
+            
+            const basename = lowerName.replace(/\.[^/.]+$/, ""); // Remove extension
+            return docPatterns.some(pattern => basename.includes(pattern));
+        }
+
+        async function downloadDoc(owner, repo, filePath) {
+            const fileName = filePath.split('/').pop();
+            
+            // Check if this is a documentation file before downloading
+            if (!isDocumentationFile(fileName)) {
+                logStatus(`Skipping non-documentation file: ${filePath}`);
+                return null;
+            }
+            
+            try {
+                logStatus(`Downloading ${filePath} from ${repo}...`);
+                const content = await getFileContent(owner, repo, filePath);
+                
+                // Save to local storage as fallback
+                const localKey = `doc_${owner}_${repo}_${filePath.replace(/\//g, '_')}`;
+                localStorage.setItem(localKey, content);
+                
+                logStatus(`Downloaded ${filePath} from ${repo}`);
+                return content;
+            } catch (error) {
+                logStatus(`Error downloading ${filePath} from ${repo}: ${error.message}`);
+                return null;
+            }
+        }
+
+        // UI functions
+        function createRepoAccordion(repo) {
+            const details = document.createElement('details');
+            details.className = 'repo-details';
+            details.setAttribute('repo-name', repo.name);
+            
+            const summary = document.createElement('summary');
+            summary.style.cssText = `
+                padding: 12px;
+                background-color: #f0f0f0;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                cursor: pointer;
+                font-weight: bold;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            `;
+            
+            // Determine if this is a local-only repo (no owner property means it's from local list)
+            const isLocalOnly = !repo.owner;
+            const repoOwner = repo.owner ? repo.owner.login : githubUsername;
+            const repoName = repo.name;
+            
+            summary.innerHTML = `
+                <span>
+                    <span style="color: #0366d6;">${sanitizeHTML(repo.name)}</span>
+                    <small style="color: #666; margin-left: 10px;">(${repo.language || 'No language'})</small>
+                    <span id="sync-status-${repo.name}" style="margin-left: 10px; padding: 2px 6px; border-radius: 10px; font-size: 0.8em; background-color: #fff3cd; color: #856404;">○ Not Synced</span>
+                    ${isLocalOnly ? '<span style="margin-left: 10px; padding: 2px 6px; border-radius: 10px; font-size: 0.8em; background-color: #d1ecf1; color: #0c5460;">LOCAL</span>' : ''}
+                </span>
+                <span>
+                    <button onclick="downloadRepoDocs(event, '${repoOwner}', '${repoName}')" 
+                            style="padding: 4px 8px; margin-right: 5px; background-color: #2ea44f; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">Download Docs</button>
+                    <button onclick="uploadRepoDocs(event, '${repoOwner}', '${repoName}')" 
+                            style="padding: 4px 8px; margin-right: 5px; background-color: #0366d6; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">Upload Docs</button>
+                    <button onclick="refreshRepoDocs(event, '${repoOwner}', '${repoName}')" 
+                            style="padding: 4px 8px; background-color: #586069; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">Refresh</button>
+                </span>
+            `;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.style.cssText = `
+                padding: 15px;
+                border: 1px solid #ccc;
+                border-top: none;
+                background-color: white;
+            `;
+            
+            contentDiv.innerHTML = `
+                <div style="margin-bottom: 15px;">
+                    <strong>Description:</strong> ${repo.description ? sanitizeHTML(repo.description) : 'No description'}
+                </div>
+                <div id="docs-${repo.name}" style="margin-top: 15px;">
+                    <p>Loading documentation...</p>
+                </div>
+            `;
+            
+            details.appendChild(summary);
+            details.appendChild(contentDiv);
+            
+            return details;
+        }
+
+        async function renderRepoDocs(owner, repoName) {
+            const docsContainer = document.getElementById(`docs-${repoName}`);
+            if (!docsContainer) return;
+
+            try {
+                const docs = await getRepoDocs(owner, repoName);
+                
+                if (docs.length === 0) {
+                    docsContainer.innerHTML = '<p>No documentation files found in this repository.</p>';
+                    return;
+                }
+
+                let docsHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;">';
+                
+                for (const doc of docs) {
+                    // Double-check that this is a documentation file
+                    if (!isDocumentationFile(doc.name)) {
+                        continue; // Skip non-documentation files
+                    }
+                    
+                    // Get local content if available
+                    const localKey = `doc_${owner}_${repoName}_${doc.path.replace(/\//g, '_')}`;
+                    const localContent = localStorage.getItem(localKey);
+                    
+                    docsHtml += `
+                        <div style="border: 1px solid #ddd; border-radius: 4px; padding: 10px; background-color: #fafbfc;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <strong style="color: #0366d6;">${sanitizeHTML(doc.name)}</strong>
+                                <span style="font-size: 0.8em; color: #586069;">${doc.size} bytes</span>
+                            </div>
+                            <div style="font-size: 0.9em; color: #586069; margin: 8px 0;">
+                                Path: <code>${sanitizeHTML(doc.path)}</code>
+                            </div>
+                            <div style="margin: 10px 0;">
+                                <button onclick="viewDoc('${owner}', '${repoName}', '${doc.path}')" 
+                                        style="padding: 4px 8px; margin-right: 5px; background-color: #0366d6; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">View</button>
+                                <button onclick="downloadSingleDoc('${owner}', '${repoName}', '${doc.path}')" 
+                                        style="padding: 4px 8px; margin-right: 5px; background-color: #2ea44f; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">Download</button>
+                                <button onclick="uploadSingleDoc('${owner}', '${repoName}', '${doc.path}')" 
+                                        style="padding: 4px 8px; background-color: #586069; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">Upload</button>
+                            </div>
+                            ${localContent ? 
+                                '<div style="font-size: 0.8em; color: green; margin-top: 5px;">✓ Local copy available</div>' : 
+                                '<div style="font-size: 0.8em; color: orange; margin-top: 5px;">○ No local copy</div>'
+                            }
+                        </div>
+                    `;
+                }
+                
+                docsHtml += '</div>';
+                docsContainer.innerHTML = docsHtml;
+                
+                // If no documentation files were found after filtering
+                if (!docs.some(doc => isDocumentationFile(doc.name))) {
+                    docsContainer.innerHTML = '<p>No documentation files found in this repository.</p>';
+                }
+            } catch (error) {
+                docsContainer.innerHTML = `<p>Error loading documentation: ${error.message}</p>`;
+            }
+        }
+
+        // Event handlers
+        async function loadRepositories() {
+            githubToken = document.getElementById('githubToken').value;
+            githubUsername = document.getElementById('githubUsername').value;
+            
+            if (!githubToken) {
+                alert('Please enter your GitHub token');
+                return;
+            }
+            
+            if (!githubUsername) {
+                alert('Please enter your GitHub username');
+                return;
+            }
+            
+            // Save credentials to localStorage
+            localStorage.setItem('github_token', githubToken);
+            localStorage.setItem('github_username', githubUsername);
+            
+            try {
+                logStatus('Loading repositories from GitHub...');
+                const githubRepos = await getUserRepos(githubUsername);
+                
+                // Also get local repositories
+                logStatus('Checking local repositories...');
+                localRepos = await getLocalRepos();
+                
+                // Combine GitHub and local repositories, removing duplicates
+                const allRepos = [...githubRepos];
+                const existingNames = new Set(githubRepos.map(repo => repo.name));
+                
+                for (const localRepo of localRepos) {
+                    if (!existingNames.has(localRepo.name)) {
+                        allRepos.push(localRepo);
+                    }
+                }
+                
+                repos = allRepos;
+                repoListEl.innerHTML = '';
+                
+                if (repos.length === 0) {
+                    repoListEl.innerHTML = '<p>No repositories found (neither on GitHub nor locally).</p>';
+                    return;
+                }
+                
+                logStatus(`Found ${repos.length} repositories (GitHub + local). Checking local synchronization...`);
+                
+                // Sort repositories after loading
+                sortRepositories();
+                
+                logStatus(`Completed loading ${repos.length} repositories with synchronization check`);
+            } catch (error) {
+                logStatus(`Error loading repositories: ${error.message}`);
+            }
+        }
+
+        // Function to get local repositories from the local file system
+        async function getLocalRepos() {
+            try {
+                // In a real implementation, we would scan the local repos directory
+                // For this demo, we'll simulate by returning a list of known local repos
+                // In a browser environment, we can't directly access the file system
+                
+                // Simulate getting local repos by creating objects for known local directories
+                const localRepoNames = [
+                    '380.agency', 'accordion-ui', 'amanita', 'b8k', 'beatmap', 'capsulfit', 
+                    'chat', 'consensus', 'CONSILIUM', 'consilium.forum', 'constructor', 
+                    'cubes', 'fast-find', 'food', 'fungi', 'gitman', 'grids', 'gypsy-coder', 
+                    'homo.voto', 'human', 'humor', 'interview', 'itmed', 'locator', 'nature', 
+                    'newzzz', 'olegzai.com', 'pizza-constructor', 'projector', 'prompter', 
+                    'r8m', 'radar', 'receptor', 'recorder', 'reminder', 'shrooms', 'smok', 
+                    'specia', 'study', 'super-search', 'survival-kit', 'tester', 'top', 
+                    'topper', 'wall', 'yo'
+                ];
+                
+                // Create repo objects for local repos
+                const localRepos = localRepoNames.map(name => ({
+                    name: name,
+                    description: `Local repository: ${name}`,
+                    language: 'Local',
+                    owner: null // Indicates it's a local-only repo
+                }));
+                
+                logStatus(`Found ${localRepos.length} local repositories`);
+                return localRepos;
+            } catch (error) {
+                logStatus(`Error getting local repositories: ${error.message}`);
+                return [];
+            }
+        }
+
+        async function checkLocalSync(owner, repoName) {
+            try {
+                // Check if we have local data for this repository
+                const localData = localStorage.getItem(`repo_${repoName}`);
+                const hasLocalData = localData !== null;
+                
+                // Update the existing sync status indicator
+                const syncIndicator = document.getElementById(`sync-status-${repoName}`);
+                if (syncIndicator) {
+                    if (hasLocalData) {
+                        syncIndicator.textContent = '✓ Synced';
+                        syncIndicator.style.backgroundColor = '#d4edda';
+                        syncIndicator.style.color = '#155724';
+                    } else {
+                        syncIndicator.textContent = '○ Not Synced';
+                        syncIndicator.style.backgroundColor = '#fff3cd';
+                        syncIndicator.style.color = '#856404';
+                    }
+                }
+                
+                return hasLocalData;
+            } catch (error) {
+                logStatus(`Error checking local sync for ${repoName}: ${error.message}`);
+                return false;
+            }
+        }
+
+        async function downloadRepoDocs(event, owner, repoName) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            logStatus(`Starting download of all docs for ${repoName}...`);
+            
+            try {
+                const docs = await getRepoDocs(owner, repoName);
+                
+                for (const doc of docs) {
+                    await downloadDoc(owner, repoName, doc.path);
+                }
+                
+                logStatus(`Completed download of ${docs.length} docs for ${repoName}`);
+                
+                // Refresh the UI to show local copies
+                const repoOwner = owner;
+                renderRepoDocs(repoOwner, repoName);
+                
+                // Update sync status
+                await checkLocalSync(owner, repoName);
+            } catch (error) {
+                logStatus(`Error downloading docs for ${repoName}: ${error.message}`);
+            }
+        }
+
+        async function uploadRepoDocs(event, owner, repoName) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            logStatus(`Starting upload of all docs for ${repoName}...`);
+            
+            try {
+                const docsContainer = document.getElementById(`docs-${repoName}`);
+                if (!docsContainer) return;
+                
+                // For this demo, we'll look for locally stored docs
+                const localKeys = Object.keys(localStorage).filter(key => 
+                    key.startsWith(`doc_${owner}_${repoName}_`)
+                );
+                
+                let uploadedCount = 0;
+                
+                for (const key of localKeys) {
+                    const filePath = key.replace(`doc_${owner}_${repoName}_`, '').replace(/_/g, '/');
+                    const content = localStorage.getItem(key);
+                    
+                    // Check if this is a documentation file before uploading
+                    if (content && isDocumentationFile(filePath.split('/').pop())) {
+                        await updateFile(
+                            owner, 
+                            repoName, 
+                            filePath, 
+                            content, 
+                            `Update documentation file ${filePath} via GITMAN`
+                        );
+                        uploadedCount++;
+                    } else if (content) {
+                        logStatus(`Skipping non-documentation file: ${filePath}`);
+                    }
+                }
+                
+                logStatus(`Completed upload of ${uploadedCount} docs for ${repoName}`);
+                
+                // Update sync status
+                await checkLocalSync(owner, repoName);
+            } catch (error) {
+                logStatus(`Error uploading docs for ${repoName}: ${error.message}`);
+            }
+        }
+
+        async function refreshRepoDocs(event, owner, repoName) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            logStatus(`Refreshing documentation for ${repoName}...`);
+            await renderRepoDocs(owner, repoName);
+            
+            // Update sync status
+            await checkLocalSync(owner, repoName);
+        }
+
+        async function downloadSingleDoc(owner, repoName, filePath) {
+            logStatus(`Downloading single doc: ${filePath} from ${repoName}...`);
+            await downloadDoc(owner, repoName, filePath);
+            renderRepoDocs(owner, repoName); // Refresh to show local copy indicator
+            
+            // Update sync status
+            await checkLocalSync(owner, repoName);
+        }
+
+        async function uploadSingleDoc(owner, repoName, filePath) {
+            logStatus(`Uploading single doc: ${filePath} to ${repoName}...`);
+            
+            const localKey = `doc_${owner}_${repoName}_${filePath.replace(/\//g, '_')}`;
+            const localContent = localStorage.getItem(localKey);
+            
+            if (!localContent) {
+                logStatus(`No local content found for ${filePath}. Cannot upload.`);
+                return;
+            }
+            
+            // Check if this is a documentation file before uploading
+            if (!isDocumentationFile(filePath.split('/').pop())) {
+                logStatus(`Cannot upload non-documentation file: ${filePath}`);
+                return;
+            }
+            
+            await updateFile(
+                owner,
+                repoName,
+                filePath,
+                localContent,
+                `Update documentation file ${filePath} via GITMAN`
+            );
+            
+            // Update sync status
+            await checkLocalSync(owner, repoName);
+        }
+
+        async function viewDoc(owner, repoName, filePath) {
+            try {
+                // Try to get local content first
+                const localKey = `doc_${owner}_${repoName}_${filePath.replace(/\//g, '_')}`;
+                let content = localStorage.getItem(localKey);
+                
+                // If no local content, fetch from GitHub
+                if (!content) {
+                    logStatus(`Fetching ${filePath} from ${repoName} to view...`);
+                    content = await getFileContent(owner, repoName, filePath);
+                    
+                    // Save to local storage for future reference
+                    localStorage.setItem(localKey, content);
+                }
+                
+                // Create a new window/tab to display the content
+                const viewWindow = window.open('', '_blank');
+                viewWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>${sanitizeHTML(filePath)} - ${sanitizeHTML(repoName)}</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+                            h1, h2, h3 { color: #24292e; }
+                            pre { background-color: #f5f5f5; padding: 10px; overflow-x: auto; }
+                            code { background-color: #f0f0f0; padding: 2px 4px; border-radius: 3px; }
+                            blockquote { border-left: 4px solid #ddd; padding-left: 10px; color: #666; }
+                        </style>
+                    </head>
+                    <body>
+                        <h1>${sanitizeHTML(filePath)} in ${sanitizeHTML(repoName)}</h1>
+                        <div id="content">${markdownToHtml(content)}</div>
+                        <hr>
+                        <div style="margin-top: 20px; font-size: 0.9em; color: #666;">
+                            <p>Viewing documentation via GITMAN - GitHub Documentation Manager</p>
+                        </div>
+                    </body>
+                    </html>
+                `);
+                viewWindow.document.close();
+            } catch (error) {
+                logStatus(`Error viewing ${filePath}: ${error.message}`);
+            }
+        }
+
+        async function syncAllDocs() {
+            if (!repos || repos.length === 0) {
+                logStatus('No repositories loaded. Please load repositories first.');
+                return;
+            }
+            
+            logStatus(`Starting sync of all documentation for ${repos.length} repositories...`);
+            
+            for (const repo of repos) {
+                const repoOwner = repo.owner ? repo.owner.login : githubUsername;
+                await downloadRepoDocs(null, repoOwner, repo.name);
+            }
+            
+            logStatus('Completed sync of all documentation.');
+            
+            // Update all sync statuses
+            for (const repo of repos) {
+                const repoOwner = repo.owner ? repo.owner.login : githubUsername;
+                await checkLocalSync(repoOwner, repo.name);
+            }
+        }
+
+        // Function to create a repository on GitHub
+        async function createRepoOnGitHub(repoName) {
+            const url = 'https://api.github.com/user/repos';
+            
+            const repoData = {
+                name: repoName,
+                description: `Repository for ${repoName} managed by GITMAN`,
+                private: false, // Set to true if you want private repos by default
+                auto_init: true, // Initialize with a README
+                gitignore_template: 'Node',
+                license_template: 'mit'
+            };
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${githubToken}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(repoData)
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`Failed to create repository: ${response.status} - ${errorData.message}`);
+            }
+            
+            return await response.json();
+        }
+
+        // Function to check if a repository exists on GitHub
+        async function repoExistsOnGitHub(repoName) {
+            try {
+                const url = `https://api.github.com/repos/${githubUsername}/${repoName}`;
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${githubToken}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                
+                return response.ok; // Returns true if repo exists, false otherwise
+            } catch (error) {
+                return false;
+            }
+        }
+
+        // Function to synchronize online and offline repositories
+        async function syncRepos() {
+            githubToken = document.getElementById('githubToken').value;
+            githubUsername = document.getElementById('githubUsername').value;
+            
+            if (!githubToken) {
+                alert('Please enter your GitHub token');
+                return;
+            }
+            
+            if (!githubUsername) {
+                alert('Please enter your GitHub username');
+                return;
+            }
+            
+            logStatus('Starting synchronization between online and offline repositories...');
+            
+            try {
+                // Get online repositories
+                const onlineRepos = await getUserRepos(githubUsername);
+                const onlineRepoNames = new Set(onlineRepos.map(repo => repo.name));
+                
+                // Get local repositories
+                const localRepos = await getLocalRepos();
+                const localRepoNames = new Set(localRepos.map(repo => repo.name));
+                
+                // Find repos that are only online (need to be cloned locally)
+                const onlyOnline = [...onlineRepoNames].filter(name => !localRepoNames.has(name));
+                
+                // Find repos that are only local (need to be pushed to GitHub)
+                const onlyLocal = [...localRepoNames].filter(name => !onlineRepoNames.has(name));
+                
+                // Find repos that are both online and local (need to be synced)
+                const both = [...onlineRepoNames].filter(name => localRepoNames.has(name));
+                
+                logStatus(`Found ${onlyOnline.length} repos only online, ${onlyLocal.length} repos only local, ${both.length} repos in both.`);
+                
+                // Sync repos that exist in both places
+                for (const repoName of both) {
+                    logStatus(`Syncing ${repoName} (exists both online and locally)...`);
+                    
+                    // Download latest docs from online
+                    await downloadRepoDocs(null, githubUsername, repoName);
+                    
+                    // Upload local changes to online (if any)
+                    await uploadRepoDocs(null, githubUsername, repoName);
+                }
+                
+                // Clone repos that only exist online
+                for (const repoName of onlyOnline) {
+                    logStatus(`Cloning ${repoName} from online to local...`);
+                    
+                    // Download docs from online
+                    await downloadRepoDocs(null, githubUsername, repoName);
+                }
+                
+                // Push repos that only exist locally
+                for (const repoName of onlyLocal) {
+                    logStatus(`Pushing ${repoName} from local to online...`);
+                    
+                    // Check if repo exists on GitHub, create if it doesn't
+                    const exists = await repoExistsOnGitHub(repoName);
+                    if (!exists) {
+                        logStatus(`Creating repository ${repoName} on GitHub...`);
+                        await createRepoOnGitHub(repoName);
+                    }
+                    
+                    // Upload docs to the repo (whether it existed or was just created)
+                    await uploadRepoDocs(null, githubUsername, repoName);
+                }
+                
+                logStatus('Completed synchronization between online and offline repositories.');
+                
+                // Reload repositories to reflect changes
+                await loadRepositories();
+            } catch (error) {
+                logStatus(`Error during repository synchronization: ${error.message}`);
+            }
+        }
+
+        // Function to sort repositories based on selected criteria
+        function sortRepositories() {
+            if (!repos || repos.length === 0) {
+                logStatus('No repositories to sort. Please load repositories first.');
+                return;
+            }
+            
+            const sortOrder = document.getElementById('sortOrder').value;
+            
+            // Sort the repos array based on the selected criteria
+            switch (sortOrder) {
+                case 'name-asc':
+                    repos.sort((a, b) => a.name.localeCompare(b.name));
+                    break;
+                case 'name-desc':
+                    repos.sort((a, b) => b.name.localeCompare(a.name));
+                    break;
+                case 'updated-asc':
+                    repos.sort((a, b) => new Date(a.updated_at || a.created_at) - new Date(b.updated_at || b.created_at));
+                    break;
+                case 'updated-desc':
+                    repos.sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
+                    break;
+                default:
+                    // Default to name ascending
+                    repos.sort((a, b) => a.name.localeCompare(b.name));
+            }
+            
+            // Re-render the repository list with the sorted order
+            repoListEl.innerHTML = '';
+            
+            for (const repo of repos) {
+                const accordion = createRepoAccordion(repo);
+                repoListEl.appendChild(accordion);
+                
+                // Load docs for each repo
+                setTimeout(async () => {
+                    const repoOwner = repo.owner ? repo.owner.login : githubUsername;
+                    await checkLocalSync(repoOwner, repo.name);
+                    await renderRepoDocs(repoOwner, repo.name);
+                }, 100);
+            }
+            
+            logStatus(`Repositories sorted by: ${getSortDescription(sortOrder)}`);
+        }
+
+        // Helper function to get sort description
+        function getSortDescription(sortValue) {
+            const descriptions = {
+                'name-asc': 'Name (A-Z)',
+                'name-desc': 'Name (Z-A)',
+                'updated-asc': 'Last Updated (Oldest)',
+                'updated-desc': 'Last Updated (Newest)'
+            };
+            return descriptions[sortValue] || 'Unknown';
+        }
+
+        // Function to check synchronization status between local and online repositories
+        async function checkSyncStatus() {
+            githubToken = document.getElementById('githubToken').value;
+            githubUsername = document.getElementById('githubUsername').value;
+            
+            if (!githubToken) {
+                alert('Please enter your GitHub token');
+                return;
+            }
+            
+            if (!githubUsername) {
+                alert('Please enter your GitHub username');
+                return;
+            }
+            
+            logStatus('Checking synchronization status between local and online repositories...');
+            
+            try {
+                // Get online repositories
+                const onlineRepos = await getUserRepos(githubUsername);
+                const onlineRepoNames = new Set(onlineRepos.map(repo => repo.name));
+                
+                // Get local repositories
+                const localRepos = await getLocalRepos();
+                const localRepoNames = new Set(localRepos.map(repo => repo.name));
+                
+                // Find repos that are only online
+                const onlyOnline = [...onlineRepoNames].filter(name => !localRepoNames.has(name));
+                
+                // Find repos that are only local
+                const onlyLocal = [...localRepoNames].filter(name => !onlineRepoNames.has(name));
+                
+                // Find repos that are both online and local
+                const both = [...onlineRepoNames].filter(name => localRepoNames.has(name));
+                
+                // Generate report
+                let report = '<div style="font-family: monospace; white-space: pre-line;">';
+                report += `Total Online Repositories: ${onlineRepos.length}\n`;
+                report += `Total Local Repositories: ${localRepos.length}\n`;
+                report += `Repositories Only Online: ${onlyOnline.length}\n`;
+                report += `Repositories Only Local: ${onlyLocal.length}\n`;
+                report += `Repositories Both Online & Local: ${both.length}\n\n`;
+                
+                if (onlyOnline.length > 0) {
+                    report += `Repositories Only on GitHub (${onlyOnline.length}):\n`;
+                    onlyOnline.forEach(repo => {
+                        report += `  • ${repo}\n`;
+                    });
+                    report += '\n';
+                }
+                
+                if (onlyLocal.length > 0) {
+                    report += `Repositories Only Locally (${onlyLocal.length}):\n`;
+                    onlyLocal.forEach(repo => {
+                        report += `  • ${repo}\n`;
+                    });
+                    report += '\n';
+                }
+                
+                if (both.length > 0) {
+                    report += `Repositories on Both GitHub and Locally (${both.length}):\n`;
+                    both.forEach(repo => {
+                        report += `  • ${repo}\n`;
+                    });
+                    report += '\n';
+                }
+                
+                report += '</div>';
+                
+                syncReportEl.innerHTML = report;
+                syncStatusSectionEl.style.display = 'block';
+                
+                // Auto-open the sync status accordion
+                syncStatusSectionEl.open = true;
+                
+                logStatus(`Synchronization check completed. Found ${onlyOnline.length} repos only online, ${onlyLocal.length} repos only local.`);
+            } catch (error) {
+                logStatus(`Error checking sync status: ${error.message}`);
+            }
+        }
+
+        // Simple markdown to HTML converter
+        function markdownToHtml(md) {
+            let html = md;
+            
+            // Convert headers
+            html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>');
+            html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>');
+            html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>');
+            
+            // Convert bold and italic
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            
+            // Convert inline code
+            html = html.replace(/`(.*?)`/g, '<code>$1</code>');
+            
+            // Convert code blocks
+            html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+            
+            // Convert links
+            html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+            
+            // Convert unordered lists
+            html = html.replace(/^\- (.*$)/gm, '<li>$1</li>');
+            html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+            
+            // Convert paragraphs
+            html = html.replace(/\n\n+/g, '</p><p>');
+            html = '<p>' + html + '</p>';
+            html = html.replace(/<p><\/p>/g, '');
+            
+            // Convert line breaks
+            html = html.replace(/\n/g, '<br>');
+            
+            return html;
+        }
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            logStatus('GITMAN Documentation Manager loaded. Checking configuration...');
+            
+            // Load saved credentials if available
+            const savedToken = localStorage.getItem('github_token');
+            const savedUsername = localStorage.getItem('github_username');
+            
+            if (savedToken) {
+                document.getElementById('githubToken').value = savedToken;
+                githubToken = savedToken;
+            }
+            
+            if (savedUsername) {
+                document.getElementById('githubUsername').value = savedUsername;
+                githubUsername = savedUsername;
+            }
+            
+            // Auto-load repositories if credentials are available
+            if (savedToken && savedUsername) {
+                logStatus('Using saved credentials. Loading repositories...');
+                setTimeout(loadRepositories, 1000); // Delay to allow UI to update
+            } else {
+                logStatus('Please enter your GitHub credentials to begin.');
+            }
+        });
+
+        // Function to load token from file
+        async function loadTokenFromFile() {
+            try {
+                // Check if File System Access API is available
+                if ('showOpenFilePicker' in window) {
+                    const [fileHandle] = await window.showOpenFilePicker({
+                        types: [{
+                            description: 'Text files',
+                            accept: { 'text/plain': ['.txt'] }
+                        }],
+                        excludeAcceptAllOption: true,
+                        multiple: false
+                    });
+                    
+                    const file = await fileHandle.getFile();
+                    const token = await file.text();
+                    
+                    // Save to local storage
+                    const trimmedToken = token.trim();
+                    localStorage.setItem('github_token', trimmedToken);
+                    
+                    // Update the UI
+                    document.getElementById('githubToken').value = trimmedToken;
+                    githubToken = trimmedToken;
+                    
+                    logStatus('Token loaded from file and saved to browser storage');
+                } else {
+                    // Fallback: use a traditional file input
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = '.txt';
+                    
+                    input.onchange = async (event) => {
+                        const file = event.target.files[0];
+                        if (file) {
+                            const reader = new FileReader();
+                            
+                            reader.onload = function(e) {
+                                const token = e.target.result.trim();
+                                
+                                // Save to local storage
+                                localStorage.setItem('github_token', token);
+                                
+                                // Update the UI
+                                document.getElementById('githubToken').value = token;
+                                githubToken = token;
+                                
+                                logStatus('Token loaded from file and saved to browser storage');
+                            };
+                            
+                            reader.readAsText(file);
+                        }
+                    };
+                    
+                    input.click();
+                }
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    logStatus('Error loading token from file: ' + error.message);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
