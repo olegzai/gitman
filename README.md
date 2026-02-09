@@ -1,6 +1,6 @@
 # GITMAN
 
-**GITMAN** is a specialized GitHub repository management tool designed specifically for handling documentation files in Markdown format. The project aims to provide a streamlined workflow for managing documentation across multiple GitHub repositories while maintaining strict limitations to prevent any code modifications.
+**GITMAN** is a documentation assistant and GitHub repository management tool designed specifically for handling documentation files in Markdown and Text format. The project aims to provide a streamlined workflow for managing documentation across multiple GitHub repositories while maintaining strict limitations to prevent any code modifications.
 
 ## Table of Contents
 
@@ -29,14 +29,14 @@ GITMAN serves as a documentation-focused repository manager that allows users to
 
 ## Features
 
-- **Markdown Documentation Management**: Efficiently manage `.md` files across multiple GitHub repositories
+- **Documentation Management**: Efficiently manage `.md`, `.txt`, `.json`, and `.yaml` files across multiple GitHub repositories
 - **Safe Operations**: Strictly limited to documentation files to prevent accidental code modifications
 - **Multi-repository Support**: Handle documentation across multiple GitHub repositories simultaneously
 - **Version Control Integration**: Seamless integration with GitHub's version control system for documentation
 - **Documentation Workflow Optimization**: Streamlined processes for updating, reviewing, and publishing documentation
 - **Local and Online Synchronization**: Sync documentation between local storage and GitHub repositories
 - **Repository Status Tracking**: Visual indicators for synchronization status
-- **File Filtering**: Automatically identifies and displays only documentation files (MD files)
+- **File Filtering**: Automatically identifies and displays only documentation files (MD, TXT, JSON, YAML files)
 - **Accordions Interface**: Hierarchical accordion-based UI for easy navigation
 - **Sorting Options**: Sort repositories by name or last update date
 - **Token Management**: Secure token handling with file loading capability
@@ -48,7 +48,7 @@ GITMAN serves as a documentation-focused repository manager that allows users to
 ## Limitations
 
 - **No Code Editing**: GITMAN cannot and will never be able to edit code files (`.js`, `.py`, `.java`, `.cpp`, etc.)
-- **Markdown Only**: Limited exclusively to Markdown and Text (`.md`, `.txt`) files and related documentation assets
+- **Documentation Files Only**: Limited exclusively to documentation files (`.md`, `.txt`, `.json`, `.yaml`) and related documentation assets
 - **Read-Only Code Protection**: Implements strict safeguards to prevent any modifications to source code files
 - **Documentation Focus**: Designed specifically for documentation workflows, not development workflows
 
@@ -85,7 +85,7 @@ Based on user feedback, GITMAN is designed for users who:
   - Synchronize all repositories at once
   - Update all repositories simultaneously
   - Review all changes across repositories at once
-- Work primarily with Markdown and plain text files, sometimes with embedded code snippets
+- Work primarily with Markdown, plain text, JSON, and YAML files, sometimes with embedded code snippets
 - Need additional features like search capabilities, filtering options, collaboration tools, change tracking, and export/import functionality
 - Face challenges with synchronizing documents across repositories, maintaining consistent formatting, and tracking changes and updates
 - Appreciate the use of TypeScript for development due to its type safety benefits
@@ -107,7 +107,7 @@ Based on user feedback, GITMAN is designed for users who:
 - **User Preferences**: Supports both file-based token loading and manual entry based on user preference
 - **Offline Capability**: Critical for users who need to work offline regularly
 - **Interface Design**: Prioritizes accordion-based navigation, responsive design, visual status indicators, and sorting capabilities
-- **Documentation Formats**: Optimized for Markdown (.md) and plain text (.txt) files, with support for embedded code snippets
+- **Documentation Formats**: Optimized for Markdown (.md), plain text (.txt), JSON (.json), and YAML (.yaml) files, with support for embedded code snippets
 
 ## Installation
 
