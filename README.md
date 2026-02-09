@@ -27,7 +27,7 @@ GITMAN serves as a documentation-focused repository manager that allows users to
 ## Limitations
 
 - **No Code Editing**: GITMAN cannot and will never be able to edit code files (`.js`, `.py`, `.java`, `.cpp`, etc.)
-- **Markdown Only**: Limited exclusively to Markdown (`.md`) files and related documentation assets
+- **Markdown Only**: Limited exclusively to Markdown and Text (`.md`, `.txt`) files and related documentation assets
 - **Read-Only Code Protection**: Implements strict safeguards to prevent any modifications to source code files
 - **Documentation Focus**: Designed specifically for documentation workflows, not development workflows
 
@@ -40,45 +40,134 @@ GITMAN serves as a documentation-focused repository manager that allows users to
 - Coordinating documentation reviews and approvals
 - Offline documentation management with online sync capabilities
 
+## Target Audience Insights
+
+Based on user feedback, GITMAN is designed for users who:
+
+- Primarily manage 11-25 repositories with documentation (though options exist for different scales)
+- Update documentation on a daily or weekly basis
+- Place high importance on security, ensuring no code changes occur accidentally
+- Focus on documentation management rather than code editing
+- Utilize features like:
+  - Markdown documentation management
+  - Multi-repository support
+  - Version control integration
+  - Local and online synchronization
+  - Repository status tracking
+  - File filtering
+  - Accordion-based navigation
+  - Sorting capabilities
+  - Responsive design for mobile devices
+  - Visual status indicators
+- Require bulk operations for efficient management of multiple repositories simultaneously:
+  - Synchronize all documentation at once
+  - Synchronize all repositories at once
+  - Update all repositories simultaneously
+  - Review all changes across repositories at once
+- Work primarily with Markdown and plain text files, sometimes with embedded code snippets
+- Need additional features like search capabilities, filtering options, collaboration tools, change tracking, and export/import functionality
+- Face challenges with synchronizing documents across repositories, maintaining consistent formatting, and tracking changes and updates
+- Appreciate the use of TypeScript for development due to its type safety benefits
+- Have positive attitudes toward the tool's limitations (Markdown/text only) and inability to edit code files
+- Value offline documentation management capabilities
+
+## Development Approach
+
+- **Technology Stack**: Built with TypeScript to ensure type safety and maintainability
+- **Frontend Framework**: Vue.js for building reactive and component-based user interfaces
+- **Build Tool**: Vite for fast development and optimized builds
+- **Testing Framework**: Vitest for rapid unit testing with Vite integration
+- **Code Quality**: Biome for unified code formatting and linting
+- **GitHub Integration**: Octokit for reliable interaction with GitHub APIs
+- **API Usage**: Integration with both REST and GraphQL APIs for optimal GitHub functionality
+- **Architecture**: Serverless application designed to run without dedicated servers
+- **Hosting**: Deployable on GitHub Pages, Netlify, Vercel, and similar hosting services
+- **Security**: Tokens can be handled via environment variables or stored in configuration files with file loading capability
+- **User Preferences**: Supports both file-based token loading and manual entry based on user preference
+- **Offline Capability**: Critical for users who need to work offline regularly
+- **Interface Design**: Prioritizes accordion-based navigation, responsive design, visual status indicators, and sorting capabilities
+- **Documentation Formats**: Optimized for Markdown (.md) and plain text (.txt) files, with support for embedded code snippets
+
 ## Installation
 
-GITMAN is a single HTML file application that runs in your browser:
+GITMAN can be installed in multiple ways depending on your preference:
 
-1. Download the `gitman.html` file to your local machine
-2. Open it in a modern web browser (Chrome, Firefox, Safari, Edge)
-3. Enter your GitHub token and username in the configuration section
+- Install globally via npm: `npm install -g gitman`
+- Download the executable file for your platform
+- Clone the repository and install dependencies locally
 
-## Usage
+### System Requirements
 
-1. **Configuration**:
-   - Enter your GitHub token (with appropriate permissions)
-   - Enter your GitHub username
-   - Optionally load token from a local file
+GITMAN is designed to run in a browser environment, making it accessible across platforms without complex installations.
 
-2. **Repository Management**:
-   - Click "Load Repositories" to fetch all repositories from your GitHub account
-   - Repositories are displayed in accordion format
-   - Use the sorting dropdown to organize repositories by name or update date
+## Getting Started
 
-3. **Documentation Operations**:
-   - Expand repository accordions to view documentation files
-   - Download documentation from GitHub to local storage
-   - Upload documentation from local storage to GitHub
-   - View documentation in a separate window
+1. Initialize GITMAN with the command: `gitman init`
+2. Configure your GitHub token for repository access
+3. Add repositories you wish to manage: `gitman add <repository-url>`
+4. Synchronize your documentation: `gitman sync`
 
-4. **Synchronization**:
-   - Use "Sync All Docs" to download all documentation from GitHub
-   - Use "Sync Repos" to synchronize online and offline repositories
-   - Use "Check Sync Status" to compare local and online repositories
+## Configuration
+
+GITMAN supports various configuration options:
+
+- Local repository paths
+- File types to synchronize
+- Automatic synchronization frequency
+- File filtering parameters
+- Configuration is stored in a `.gitman` file in your working directory
+
+## Commands
+
+GITMAN provides several commands for efficient management:
+
+- `gitman sync`: Synchronize documentation across repositories
+- `gitman list`: List all managed repositories
+- `gitman add <repository>`: Add a new repository to manage
+- `gitman remove <repository>`: Remove a repository from management
+
+## Security
+
+For GitHub token authorization, GITMAN requires:
+- Full access to repositories (for both public and private repositories)
+- Access to private repositories specifically
+
+## Architecture
+
+GITMAN follows a multi-platform architecture:
+- Single Page Application (SPA) for web interface
+- Traditional web application backend
+- Command Line Interface (CLI) tool
+- Progressive Web App (PWA) capabilities
+
+## Testing
+
+GITMAN employs multiple testing strategies:
+- Unit testing
+- Integration testing
+- End-to-end (E2E) testing
+- Manual testing
+
+## Versioning
+
+GITMAN uses Semantic Versioning (SemVer) for release management, with updates released as needed based on user feedback and feature requirements.
+
+## Support
+
+If you need help with GITMAN, you can:
+- Open an issue on GitHub Issues
+- Consult the documentation on the website
 
 ## Contributing
 
-We welcome contributions focused on improving the documentation management capabilities of GITMAN. Please note that all contributions must align with the project's documentation-only focus and must not introduce code editing capabilities.
+While contributions are welcome, GITMAN is currently developed by a single developer. Future updates may include community contribution options.
 
 ## License
 
-This project is licensed under [license type] - see the LICENSE file for details.
+GITMAN is released under the MIT License.
 
-## Contact
+## Roadmap
 
-For questions about GITMAN, please contact the project maintainers through the GitHub repository issues.
+Planned future enhancements include:
+- Collaborative editing for documentation
+- Documentation change history tracking
