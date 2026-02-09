@@ -3,6 +3,7 @@
 **GITMAN** is a specialized GitHub repository management tool designed specifically for handling documentation files in Markdown format. The project aims to provide a streamlined workflow for managing documentation across multiple GitHub repositories while maintaining strict limitations to prevent any code modifications.
 
 ## Table of Contents
+
 - [Purpose](#purpose)
 - [Features](#features)
 - [Limitations](#limitations)
@@ -149,12 +150,14 @@ GITMAN provides several commands for efficient management:
 ## Security
 
 For GitHub token authorization, GITMAN requires:
+
 - Full access to repositories (for both public and private repositories)
 - Access to private repositories specifically
 
 ## Architecture
 
 GITMAN follows a multi-platform architecture:
+
 - Single Page Application (SPA) for web interface
 - Traditional web application backend
 - Command Line Interface (CLI) tool
@@ -163,6 +166,7 @@ GITMAN follows a multi-platform architecture:
 ## Testing
 
 GITMAN employs multiple testing strategies:
+
 - Unit testing
 - Integration testing
 - End-to-end (E2E) testing
@@ -175,6 +179,7 @@ GITMAN uses Semantic Versioning (SemVer) for release management, with updates re
 ## Support
 
 If you need help with GITMAN, you can:
+
 - Open an issue on GitHub Issues
 - Consult the documentation on the website
 
@@ -189,5 +194,6 @@ GITMAN is released under the MIT License.
 ## Roadmap
 
 Planned future enhancements include:
+
 - Collaborative editing for documentation
 - Documentation change history tracking
