@@ -13,13 +13,16 @@ GITMAN serves as a documentation-focused repository manager that allows users to
 - **Multi-repository Support**: Handle documentation across multiple GitHub repositories simultaneously
 - **Version Control Integration**: Seamless integration with GitHub's version control system for documentation
 - **Documentation Workflow Optimization**: Streamlined processes for updating, reviewing, and publishing documentation
-- **Local and Online Synchronization**: Sync documentation between local folders and GitHub repositories
+- **Local and Online Synchronization**: Sync documentation between local storage and GitHub repositories
 - **Repository Status Tracking**: Visual indicators for synchronization status
 - **File Filtering**: Automatically identifies and displays only documentation files (MD files)
 - **Accordions Interface**: Hierarchical accordion-based UI for easy navigation
 - **Sorting Options**: Sort repositories by name or last update date
 - **Token Management**: Secure token handling with file loading capability
 - **Bulk Operations**: Sync all documentation or all repositories at once
+- **Responsive Design**: Minimalist, mobile-friendly interface that works on all screen sizes
+- **Grid Layout**: Organized grid layout for documentation files
+- **Touch-Friendly**: Optimized for touch devices with appropriately sized elements
 
 ## Limitations
 
