@@ -2,6 +2,8 @@
 
 **GITMAN** is a documentation assistant and GitHub repository management tool designed specifically for handling documentation files in Markdown and Text format. The project aims to provide a streamlined workflow for managing documentation across multiple GitHub repositories while maintaining strict limitations to prevent any code modifications.
 
+**GITMAN** is also a helpful assistant for working with GitHub, **ESPECIALLY FOR BEGINNERS AND STARTING CODERS**. It simplifies GitHub operations and provides guidance for those new to version control. The tool will also have AI integration through an API in the future to provide even more intelligent assistance.
+
 ## Table of Contents
 
 - [Purpose](#purpose)
